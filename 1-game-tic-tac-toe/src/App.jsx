@@ -1,107 +1,99 @@
-/* eslint-disable react/prop-types */
-import { useState } from 'react'; // Import hook useState dari React
+import { useState } from 'react'; // Import useState dari React
 
-// Komponen Square untuk menampilkan tombol kotak individual
-function Square({ value, onSquareClick }) {
+// Komponen Square: tombol kotak pada papan
+function Square({ value, onClick }) {
+  // Render tombol dengan nilai dan event klik
   return (
-    <button className="square" onClick={onSquareClick}> // Tombol dengan event click
-      {value} // Menampilkan nilai X atau O
+    <button className="square" onClick={onClick}>
+      {value}
     </button>
   );
 }
 
-// Komponen Board untuk menampilkan papan permainan
-function Board({ xIsNext, squares, onPlay }) {
-  function handleClick(i) { // Fungsi untuk menangani klik pada kotak
-    if (squares[i] || calculateWinner(squares)) return; // Cek apakah kotak sudah terisi atau ada pemenang
-
-    const nextSquares = squares.slice(); // Buat salinan array untuk immutability
-    nextSquares[i] = xIsNext ? 'X' : 'O'; // Tentukan nilai X atau O berdasarkan giliran
-    onPlay(nextSquares); // Kirim perubahan ke komponen induk
-  }
-
-  const winner = calculateWinner(squares); // Cek apakah ada pemenang
-  let status = '';
-  if (winner) {
-    status = 'Winner: ' + winner; // Tampilkan pemenang jika ada
-  } else {
-    status = 'Next player: ' + (xIsNext ? 'X' : 'O'); // Tampilkan giliran pemain
-  }
-
+// Komponen Board: papan permainan
+function Board({ squares, onClick, status }) {
+  // Render status dan 9 kotak papan
   return (
     <>
-      <div className="status">{status}</div> // Tampilkan status permainan
-      <div className="board"> // Container untuk papan permainan
-        <Square value={squares[0]} onSquareClick={() => handleClick(0)} /> // Kotak indeks 0
-        <Square value={squares[1]} onSquareClick={() => handleClick(1)} /> // Kotak indeks 1
-        <Square value={squares[2]} onSquareClick={() => handleClick(2)} /> // Kotak indeks 2
-        <Square value={squares[3]} onSquareClick={() => handleClick(3)} /> // Kotak indeks 3
-        <Square value={squares[4]} onSquareClick={() => handleClick(4)} /> // Kotak indeks 4
-        <Square value={squares[5]} onSquareClick={() => handleClick(5)} /> // Kotak indeks 5
-        <Square value={squares[6]} onSquareClick={() => handleClick(6)} /> // Kotak indeks 6
-        <Square value={squares[7]} onSquareClick={() => handleClick(7)} /> // Kotak indeks 7
-        <Square value={squares[8]} onSquareClick={() => handleClick(8)} /> // Kotak indeks 8
+      <div className="status">{status}</div>
+      <div className="board">
+        {squares.map((value, i) => (
+          <Square key={i} value={value} onClick={() => onClick(i)} />
+        ))}
       </div>
     </>
   );
 }
 
-export default function Game() { // Komponen utama permainan
-  const [history, setHistory] = useState([Array(9).fill(null)]); // State untuk menyimpan sejarah langkah
-  const [currentMove, setCurrentMove] = useState(0); // State untuk langkah saat ini
-  const xIsNext = currentMove % 2 === 0; // Tentukan giliran berdasarkan langkah
-  const currentSquares = history[currentMove]; // Dapatkan state papan saat ini
+// Komponen utama Game: mengelola state dan logika permainan
+export default function Game() {
+  // State: sejarah langkah & langkah saat ini
+  const [history, setHistory] = useState([Array(9).fill(null)]);
+  const [step, setStep] = useState(0);
 
-  function jumpTo(nextMove) { // Fungsi untuk melompat ke langkah tertentu
-    setCurrentMove(nextMove);
+  // Mendapatkan papan saat ini & giliran pemain
+  const squares = history[step];
+  const xIsNext = step % 2 === 0;
+
+  // Fungsi untuk menangani klik kotak
+  function handleClick(i) {
+    // Jika sudah ada pemenang atau kotak terisi, abaikan klik
+    if (squares[i] || calculateWinner(squares)) return;
+    // Salin papan & isi kotak dengan 'X' atau 'O'
+    const nextSquares = squares.slice();
+    nextSquares[i] = xIsNext ? 'X' : 'O';
+    // Update sejarah & langkah
+    const nextHistory = history.slice(0, step + 1).concat([nextSquares]);
+    setHistory(nextHistory);
+    setStep(nextHistory.length - 1);
   }
 
-  function handlePlay(nextSquares) { // Fungsi untuk menangani langkah baru
-    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares]; // Buat sejarah baru
-    setHistory(nextHistory); // Update sejarah
-    setCurrentMove(nextHistory.length - 1); // Pindah ke langkah terakhir
+  // Fungsi untuk melompat ke langkah tertentu
+  function jumpTo(move) {
+    setStep(move);
   }
 
-  const moves = history.map((squares, move) => { // Buat daftar langkah yang bisa diklik
-    let description = move > 0 ? 'Go to move #' + move : 'Go to game start';
+  // Status permainan: pemenang atau giliran berikutnya
+  const winner = calculateWinner(squares);
+  const status = winner
+    ? `Winner: ${winner}`
+    : `Next player: ${xIsNext ? 'X' : 'O'}`;
 
-    return (
-      <li key={move}> // List item untuk setiap langkah
-        <button onClick={() => jumpTo(move)}>{description}</button> // Tombol untuk melompat ke langkah
-      </li>
-    );
-  });
+  // Daftar tombol untuk melompat ke setiap langkah
+  const moves = history.map((_, move) => (
+    <li key={move}>
+      <button onClick={() => jumpTo(move)}>
+        {move ? `Go to move #${move}` : 'Go to game start'}
+      </button>
+    </li>
+  ));
 
+  // Render papan dan info permainan
   return (
-    <div className="game"> // Container utama permainan
-      <div className="game-board"> // Container papan permainan
-        <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} /> // Render papan
+    <div className="game">
+      <div className="game-board">
+        <Board squares={squares} onClick={handleClick} status={status} />
       </div>
-      <div className="game-info"> // Container informasi permainan
-        <ol>{moves}</ol> // Daftar langkah-langkah
+      <div className="game-info">
+        <ol>{moves}</ol>
       </div>
     </div>
   );
 }
 
-function calculateWinner(squares) { // Fungsi untuk mengecek pemenang
-  const lines = [ // Definisi kombinasi garis pemenang
-    [0, 1, 2], // Baris atas
-    [3, 4, 5], // Baris tengah
-    [6, 7, 8], // Baris bawah
-    [0, 3, 6], // Kolom kiri
-    [1, 4, 7], // Kolom tengah
-    [2, 5, 8], // Kolom kanan
-    [0, 4, 8], // Diagonal kiri atas ke kanan bawah
-    [2, 4, 6], // Diagonal kanan atas ke kiri bawah
+// Fungsi untuk menentukan pemenang
+function calculateWinner(squares) {
+  // Kombinasi garis kemenangan
+  const lines = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Baris
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Kolom
+    [0, 4, 8], [2, 4, 6],            // Diagonal
   ];
-
-  for (let i = 0; i < lines.length; i++) { // Loop setiap kombinasi
-    const [a, b, c] = lines[i];
-    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) { // Cek apakah ada pemenang
-      return squares[a]; // Kembalikan pemenang (X atau O)
+  // Cek setiap kombinasi
+  for (let [a, b, c] of lines) {
+    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+      return squares[a]; // Kembalikan pemenang
     }
   }
-
-  return false; // Tidak ada pemenang
+  return null; // Tidak ada pemenang
 }
